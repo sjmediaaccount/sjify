@@ -26,6 +26,8 @@ import {
   PanelLeft,
   Cpu,
   DollarSign,
+  BookOpen,
+  ShieldCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -54,6 +56,7 @@ export function Sidebar() {
   ];
 
   const devNav = [
+    { name: 'Develop Actor', href: '/actors/new', icon: Sparkles, badge: 'New' },
     { name: 'My Actors', href: '/my-actors', icon: Code2 },
     { name: 'Insights', href: '/insights', icon: BarChart3 },
     { name: 'Messaging', href: '/messaging', icon: MessageSquare },
@@ -62,7 +65,10 @@ export function Sidebar() {
   const platformNav = [
     { name: 'Proxy', href: '/proxy', icon: ShieldAlert },
     { name: 'Storage', href: '/storage', icon: Database },
+    { name: 'Pricing & Plans', href: '/pricing', icon: DollarSign },
     { name: 'Billing', href: '/billing', icon: CreditCard },
+    { name: 'Compliance & Ethics', href: '/compliance', icon: ShieldCheck },
+    { name: 'Docs & API', href: '/docs', icon: BookOpen },
     { name: 'Settings', href: '/settings', icon: Settings },
   ];
 

@@ -9,8 +9,8 @@ out/
 .env
 .env.local
 .env.*.local
-storage/
-tmp/
+/storage/
+/tmp/
 .actor/input_sync.json
 coverage/
 *.tsbuildinfo

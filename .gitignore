@@ -16,3 +16,18 @@ coverage/
 *.tsbuildinfo
 tools/
 *.exe
+
+# Security: Database & Sensitive Files
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+*.pem
+*.key
+*.cert
+*.crt
+credentials.json
+secrets.json
+.DS_Store
+Thumbs.db

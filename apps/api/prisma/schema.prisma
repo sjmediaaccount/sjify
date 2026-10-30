@@ -1,0 +1,573 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// -----------------------------------------------------------------------------
+// 1. Authentication & Multi-Tenancy
+// -----------------------------------------------------------------------------
+
+model User {
+  id                String               @id @default(cuid())
+  email             String               @unique
+  passwordHash      String
+  name              String?
+  avatarUrl         String?
+  isEmailVerified   Boolean              @default(false)
+  twoFactorEnabled  Boolean              @default(false)
+  twoFactorSecret   String?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  accounts          Account[]
+  sessions          Session[]
+  backupCodes       TwoFactorBackupCode[]
+  orgMemberships    OrganizationMember[]
+  apiTokens         ApiToken[]
+  ownedActors       Actor[]
+  tasks             ActorTask[]
+  schedules         Schedule[]
+  runs              ActorRun[]
+  datasets          Dataset[]
+  keyValueStores    KeyValueStore[]
+  requestQueues     RequestQueue[]
+  webhooks          Webhook[]
+  reviews           ActorReview[]
+  issues            ActorIssue[]
+  auditLogs         AuditLog[]
+  publisherAccount  PublisherAccount?
+}
+
+model Account {
+  id                String   @id @default(cuid())
+  userId            String
+  provider          String
+  providerAccountId String
+  accessToken       String?
+  refreshToken      String?
+  createdAt         DateTime @default(now())
+
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  token        String   @unique
+  ipAddress    String?
+  userAgent    String?
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model TwoFactorBackupCode {
+  id        String    @id @default(cuid())
+  userId    String
+  codeHash  String
+  isUsed    Boolean   @default(false)
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Organization {
+  id                      String               @id @default(cuid())
+  name                    String
+  slug                    String               @unique
+  avatarUrl               String?
+  planTier                String               @default("FREE") // FREE, STARTER, SCALE, ENTERPRISE
+  ownerId                 String
+  monthlySpendingLimitUsd Float                @default(50.0)
+  currentMonthSpendUsd    Float                @default(0.0)
+  isHardLimitReached      Boolean              @default(false)
+  nextBillingDate         DateTime?
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @updatedAt
+
+  members                 OrganizationMember[]
+  invitations             TeamInvitation[]
+  apiTokens               ApiToken[]
+  actors                  Actor[]
+  tasks                   ActorTask[]
+  schedules               Schedule[]
+  runs                    ActorRun[]
+  datasets                Dataset[]
+  keyValueStores          KeyValueStore[]
+  requestQueues           RequestQueue[]
+  webhooks                Webhook[]
+  proxyGroups             ProxyGroup[]
+  auditLogs               AuditLog[]
+  subscription            Subscription?
+}
+
+model OrganizationMember {
+  id        String       @id @default(cuid())
+  orgId     String
+  userId    String
+  role      String       @default("DEVELOPER") // OWNER, ADMIN, DEVELOPER, VIEWER
+  createdAt DateTime     @default(now())
+
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, userId])
+}
+
+model TeamInvitation {
+  id        String       @id @default(cuid())
+  orgId     String
+  email     String
+  role      String       @default("DEVELOPER")
+  token     String       @unique
+  status    String       @default("PENDING") // PENDING, ACCEPTED, EXPIRED
+  expiresAt DateTime
+  createdAt DateTime     @default(now())
+
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+}
+
+model ApiToken {
+  id          String       @id @default(cuid())
+  userId      String
+  orgId       String
+  name        String
+  tokenHash   String       @unique
+  tokenPrefix String       // e.g. sjify_api_abc...
+  scopes      String       @default("[\"*\"]") // JSON string of scopes
+  lastUsedAt  DateTime?
+  expiresAt   DateTime?
+  createdAt   DateTime     @default(now())
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  org         Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id           String       @id @default(cuid())
+  orgId        String
+  userId       String
+  action       String
+  resourceType String
+  resourceId   String
+  metadata     String       @default("{}") // JSON string
+  ipAddress    String?
+  createdAt    DateTime     @default(now())
+
+  org          Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// -----------------------------------------------------------------------------
+// 2. Actors, Builds & Versioning
+// -----------------------------------------------------------------------------
+
+model Actor {
+  id                  String         @id @default(cuid())
+  orgId               String
+  userId              String
+  name                String
+  slug                String
+  username            String
+  description         String         @default("")
+  readmeMarkdown      String         @default("")
+  visibility          String         @default("PUBLIC") // PUBLIC, PRIVATE
+  defaultMemoryMbytes Int            @default(1024)
+  defaultTimeoutSecs  Int            @default(3600)
+  restartPolicy       String         @default("NEVER")
+  pricingModel        String         @default("FREE") // FREE, RENTAL, PAY_PER_RESULT, PAY_PER_EVENT
+  priceUsd            Float          @default(0.0)
+  ratingAvg           Float          @default(5.0)
+  ratingCount         Int            @default(0)
+  statsRunsTotal      Int            @default(0)
+  statsUsersTotal     Int            @default(0)
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  org                 Organization   @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user                User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  versions            ActorVersion[]
+  builds              ActorBuild[]
+  runs                ActorRun[]
+  tasks               ActorTask[]
+  envVars             ActorEnvVar[]
+  reviews             ActorReview[]
+  issues              ActorIssue[]
+
+  @@unique([username, slug])
+}
+
+model ActorVersion {
+  id                String       @id @default(cuid())
+  actorId           String
+  versionTag        String       @default("latest")
+  sourceType        String       @default("INLINE") // INLINE, GIT_REPO, TAR_BUNDLE
+  sourceS3Key       String?
+  dockerfileContent String       @default("FROM node:20-alpine\nWORKDIR /usr/src/app\nCOPY package*.json ./\nRUN npm install\nCOPY . .\nCMD [\"npm\", \"start\"]")
+  actorJson         String       @default("{}") // JSON string
+  inputSchemaJson   String       @default("{}") // JSON string
+  buildOnPush       Boolean      @default(true)
+  createdAt         DateTime     @default(now())
+
+  actor             Actor        @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  builds            ActorBuild[]
+  runs              ActorRun[]
+
+  @@unique([actorId, versionTag])
+}
+
+model ActorBuild {
+  id             String       @id @default(cuid())
+  actorId        String
+  versionId      String
+  buildNumber    Int          @default(1)
+  status         String       @default("READY") // BUILDING, READY, FAILED, ABORTED
+  imageTag       String?
+  buildLogsS3Key String?
+  durationSecs   Int          @default(0)
+  startedAt      DateTime     @default(now())
+  finishedAt     DateTime?
+  triggeredBy    String       @default("WEB")
+
+  actor          Actor        @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  version        ActorVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+}
+
+model ActorEnvVar {
+  id             String   @id @default(cuid())
+  actorId        String
+  key            String
+  value          String
+  isSecret       Boolean  @default(false)
+  encryptedValue String?
+  createdAt      DateTime @default(now())
+
+  actor          Actor    @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@unique([actorId, key])
+}
+
+// -----------------------------------------------------------------------------
+// 3. Execution Engine & Runs
+// -----------------------------------------------------------------------------
+
+model ActorRun {
+  id                     String        @id @default(cuid())
+  actorId                String
+  versionId              String
+  taskId                 String?
+  orgId                  String
+  userId                 String
+  status                 String        @default("READY") // READY, RUNNING, SUCCEEDED, FAILED, TIMING_OUT, TIMED_OUT, ABORTING, ABORTED
+  containerId            String?
+  containerExitCode      Int?
+  statusMessage          String?
+  origin                 String        @default("WEB") // WEB, API, SCHEDULE, WEBHOOK, MCP
+  allocatedMemoryMbytes  Int           @default(1024)
+  allocatedCpuQuota      Float         @default(1.0)
+  startedAt              DateTime      @default(now())
+  finishedAt             DateTime?
+  durationSeconds        Int           @default(0)
+  chargedUsageUsd        Float         @default(0.0)
+  resultsCount           Int           @default(0)
+  defaultDatasetId       String?
+  defaultKeyValueStoreId String?
+  defaultRequestQueueId  String?
+  logsS3Key              String?
+
+  actor                  Actor         @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  version                ActorVersion  @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  task                   ActorTask?    @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  org                    Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user                   User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  metrics                RunMetric[]
+}
+
+model RunMetric {
+  id                 String   @id @default(cuid())
+  runId              String
+  timestamp          DateTime @default(now())
+  cpuPercent         Float    @default(0.0)
+  memoryUsedMbytes   Int      @default(0)
+  memoryLimitMbytes  Int      @default(1024)
+  networkInputBytes  BigInt   @default(0)
+  networkOutputBytes BigInt   @default(0)
+
+  run                ActorRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+}
+
+// -----------------------------------------------------------------------------
+// 4. Tasks & Schedules
+// -----------------------------------------------------------------------------
+
+model ActorTask {
+  id           String       @id @default(cuid())
+  orgId        String
+  userId       String
+  actorId      String
+  name         String
+  description  String?
+  inputJson    String       @default("{}") // JSON string
+  memoryMbytes Int          @default(1024)
+  timeoutSecs  Int          @default(3600)
+  buildTag     String       @default("latest")
+  lastRunId    String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  org          Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  actor        Actor        @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  runs         ActorRun[]
+}
+
+model Schedule {
+  id              String              @id @default(cuid())
+  orgId           String
+  userId          String
+  name            String
+  description     String?
+  cronExpression  String
+  timezone        String              @default("UTC")
+  isEnabled       Boolean             @default(true)
+  attachedActions String              @default("[]") // JSON array of actions
+  lastRunAt       DateTime?
+  nextRunAt       DateTime?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  org             Organization        @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  executions      ScheduleExecution[]
+}
+
+model ScheduleExecution {
+  id              String   @id @default(cuid())
+  scheduleId      String
+  triggeredAt     DateTime @default(now())
+  status          String   @default("SUCCEEDED")
+  triggeredRunIds String   @default("[]") // JSON array
+
+  schedule        Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+}
+
+// -----------------------------------------------------------------------------
+// 5. Storage Subsystem (Datasets, Key-Value Stores, Request Queues)
+// -----------------------------------------------------------------------------
+
+model Dataset {
+  id             String        @id @default(cuid())
+  orgId          String
+  userId         String
+  name           String?
+  isNamed        Boolean       @default(false)
+  itemCount      Int           @default(0)
+  totalSizeBytes Int           @default(0)
+  retentionDays  Int           @default(7)
+  schemaJson     String?       @default("{}") // Optional JSON Schema
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  org            Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items          DatasetItem[]
+}
+
+model DatasetItem {
+  id        String   @id @default(cuid())
+  datasetId String
+  itemIndex Int
+  data      String   // JSON string
+  createdAt DateTime @default(now())
+
+  dataset   Dataset  @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+
+  @@index([datasetId, itemIndex])
+}
+
+model KeyValueStore {
+  id             String           @id @default(cuid())
+  orgId          String
+  userId         String
+  name           String?
+  isNamed        Boolean          @default(false)
+  recordCount    Int              @default(0)
+  totalSizeBytes Int              @default(0)
+  retentionDays  Int              @default(7)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  org            Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  records        KeyValueRecord[]
+}
+
+model KeyValueRecord {
+  id           String        @id @default(cuid())
+  storeId      String
+  key          String
+  contentType  String        @default("application/json")
+  sizeBytes    Int           @default(0)
+  s3StorageKey String?
+  valueText    String?
+  isPublic     Boolean       @default(false)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  store        KeyValueStore @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, key])
+}
+
+model RequestQueue {
+  id              String             @id @default(cuid())
+  orgId           String
+  userId          String
+  name            String?
+  isNamed         Boolean            @default(false)
+  totalRequests   Int                @default(0)
+  handledRequests Int                @default(0)
+  pendingRequests Int                @default(0)
+  retentionDays   Int                @default(7)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  org             Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  requests        RequestQueueItem[]
+}
+
+model RequestQueueItem {
+  id          String       @id @default(cuid())
+  queueId     String
+  uniqueKey   String
+  url         String
+  method      String       @default("GET")
+  payload     String?
+  retryCount  Int          @default(0)
+  status      String       @default("PENDING") // PENDING, HANDLED, LOCKED
+  lockedUntil DateTime?
+  handledAt   DateTime?
+  createdAt   DateTime     @default(now())
+
+  queue       RequestQueue @relation(fields: [queueId], references: [id], onDelete: Cascade)
+
+  @@unique([queueId, uniqueKey])
+}
+
+// -----------------------------------------------------------------------------
+// 6. Webhooks, Integrations & Proxies
+// -----------------------------------------------------------------------------
+
+model Webhook {
+  id              String            @id @default(cuid())
+  orgId           String
+  userId          String
+  name            String
+  requestUrl      String
+  secretKey       String            @default("")
+  eventTypes      String            @default("[\"ACTOR.RUN.SUCCEEDED\"]") // JSON array
+  condition       String?           @default("{}")
+  payloadTemplate String?
+  isEnabled       Boolean           @default(true)
+  createdAt       DateTime          @default(now())
+
+  org             Organization      @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dispatches      WebhookDispatch[]
+}
+
+model WebhookDispatch {
+  id                 String   @id @default(cuid())
+  webhookId          String
+  runId              String
+  eventType          String
+  payload            String
+  responseStatusCode Int?
+  responseBody       String?
+  latencyMs          Int      @default(0)
+  retryCount         Int      @default(0)
+  status             String   @default("SUCCESS") // SUCCESS, FAILED, PENDING
+  dispatchedAt       DateTime @default(now())
+
+  webhook            Webhook  @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+}
+
+model ProxyGroup {
+  id             String       @id @default(cuid())
+  orgId          String
+  name           String
+  groupType      String       @default("DATACENTER") // DATACENTER, RESIDENTIAL, CUSTOM
+  host           String       @default("proxy.sjify.com")
+  port           Int          @default(8000)
+  username       String?
+  password       String?
+  countryOptions String       @default("[\"US\",\"GB\",\"DE\"]") // JSON array
+  isHealthy      Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+
+  org            Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+}
+
+// -----------------------------------------------------------------------------
+// 7. Billing, Reviews & Marketplace
+// -----------------------------------------------------------------------------
+
+model Subscription {
+  id                   String       @id @default(cuid())
+  orgId                String       @unique
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  status               String       @default("ACTIVE")
+  currentPeriodStart   DateTime     @default(now())
+  currentPeriodEnd     DateTime     @default(now())
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+
+  org                  Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+}
+
+model PublisherAccount {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  stripeConnectAccountId String?
+  isPayoutsEnabled      Boolean  @default(false)
+  totalEarningsUsd      Float    @default(0.0)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ActorReview {
+  id        String   @id @default(cuid())
+  actorId   String
+  userId    String
+  rating    Int      @default(5) // 1-5
+  comment   String   @default("")
+  createdAt DateTime @default(now())
+
+  actor     Actor    @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ActorIssue {
+  id          String   @id @default(cuid())
+  actorId     String
+  userId      String
+  title       String
+  description String
+  status      String   @default("OPEN") // OPEN, CLOSED
+  createdAt   DateTime @default(now())
+
+  actor       Actor    @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

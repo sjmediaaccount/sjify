@@ -1,0 +1,16 @@
+node_modules/
+.pnpm-store/
+dist/
+build/
+.next/
+out/
+.turbo/
+*.log
+.env
+.env.local
+.env.*.local
+storage/
+tmp/
+.actor/input_sync.json
+coverage/
+*.tsbuildinfo

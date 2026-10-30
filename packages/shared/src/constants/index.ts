@@ -1,0 +1,77 @@
+export enum RunStatus {
+  READY = 'READY',
+  RUNNING = 'RUNNING',
+  SUCCEEDED = 'SUCCEEDED',
+  FAILED = 'FAILED',
+  TIMING_OUT = 'TIMING_OUT',
+  TIMED_OUT = 'TIMED_OUT',
+  ABORTING = 'ABORTING',
+  ABORTED = 'ABORTED',
+}
+
+export enum RunOrigin {
+  WEB = 'WEB',
+  API = 'API',
+  SCHEDULE = 'SCHEDULE',
+  WEBHOOK = 'WEBHOOK',
+  MCP = 'MCP',
+}
+
+export enum ActorVisibility {
+  PUBLIC = 'PUBLIC',
+  PRIVATE = 'PRIVATE',
+}
+
+export enum BuildStatus {
+  BUILDING = 'BUILDING',
+  READY = 'READY',
+  FAILED = 'FAILED',
+  ABORTED = 'ABORTED',
+}
+
+export enum PricingModel {
+  FREE = 'FREE',
+  RENTAL = 'RENTAL',
+  PAY_PER_RESULT = 'PAY_PER_RESULT',
+  PAY_PER_EVENT = 'PAY_PER_EVENT',
+}
+
+export enum PlanTier {
+  FREE = 'FREE',
+  STARTER = 'STARTER',
+  SCALE = 'SCALE',
+  ENTERPRISE = 'ENTERPRISE',
+}
+
+export enum OrgRole {
+  OWNER = 'OWNER',
+  ADMIN = 'ADMIN',
+  DEVELOPER = 'DEVELOPER',
+  VIEWER = 'VIEWER',
+}
+
+export enum StorageType {
+  DATASET = 'DATASET',
+  KEY_VALUE_STORE = 'KEY_VALUE_STORE',
+  REQUEST_QUEUE = 'REQUEST_QUEUE',
+}
+
+export enum ProxyGroupType {
+  DATACENTER = 'DATACENTER',
+  RESIDENTIAL = 'RESIDENTIAL',
+  CUSTOM = 'CUSTOM',
+}
+
+export enum WebhookEvent {
+  RUN_CREATED = 'ACTOR.RUN.CREATED',
+  RUN_SUCCEEDED = 'ACTOR.RUN.SUCCEEDED',
+  RUN_FAILED = 'ACTOR.RUN.FAILED',
+  RUN_TIMED_OUT = 'ACTOR.RUN.TIMED_OUT',
+  RUN_ABORTED = 'ACTOR.RUN.ABORTED',
+  RUN_RESURRECTED = 'ACTOR.RUN.RESURRECTED',
+}
+
+export const DEFAULT_MEMORY_MBYTES = 1024;
+export const DEFAULT_TIMEOUT_SECS = 3600;
+export const MAX_MEMORY_MBYTES = 32768;
+export const MIN_MEMORY_MBYTES = 128;

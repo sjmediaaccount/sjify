@@ -14,3 +14,5 @@ tmp/
 .actor/input_sync.json
 coverage/
 *.tsbuildinfo
+tools/
+*.exe

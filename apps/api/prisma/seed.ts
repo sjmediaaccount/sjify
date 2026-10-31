@@ -191,6 +191,72 @@ async function main() {
         required: ['sitemapUrl'],
       },
     },
+    {
+      name: 'Google Maps Business Extractor',
+      slug: 'google-maps-extractor',
+      username: 'sjify',
+      description: 'Extract verified business details, addresses, phone numbers, review ratings, opening hours, and website presence from Google Maps without API limits.',
+      pricingModel: 'PAY_PER_RESULT',
+      priceUsd: 0.005,
+      ratingAvg: 4.95,
+      ratingCount: 312,
+      statsRunsTotal: 42100,
+      statsUsersTotal: 9800,
+      readmeMarkdown: `# Google Maps Business Extractor\n\nHigh-performance scraper for Google Maps places and business directories.\n\n### Key Capabilities\n- Multi-city and multi-keyword search matrix\n- Filter places without website for high-converting web design & marketing outreach\n- Extract verified phone numbers, postal codes, and star ratings\n- Top-tier lead enrichment with automatic web search fallback`,
+      inputSchemaJson: {
+        title: 'Google Maps Business Extractor Input',
+        type: 'object',
+        properties: {
+          searchStringsArray: {
+            title: 'Search Terms',
+            type: 'array',
+            description: 'Keywords to search on Google Maps',
+            default: ['dentist'],
+          },
+          locationQuery: {
+            title: 'Location / Region',
+            type: 'string',
+            default: 'United Kingdom',
+          },
+          cities: {
+            title: 'Target Cities',
+            type: 'array',
+            default: ['London', 'Manchester', 'Birmingham', 'Leeds', 'Glasgow', 'Bristol'],
+          },
+          maxCrawledPlacesPerSearch: {
+            title: 'Max Places Per Search Term',
+            type: 'integer',
+            default: 50,
+          },
+          onlyWithoutWebsite: {
+            title: 'Only Without Website',
+            type: 'boolean',
+            default: true,
+          },
+          skipClosedPlaces: {
+            title: 'Skip Closed Places',
+            type: 'boolean',
+            default: true,
+          },
+          enrichWithWebSearch: {
+            title: 'Enrich With Web Search',
+            type: 'boolean',
+            default: true,
+          },
+          countryCode: {
+            title: 'Country Code',
+            type: 'string',
+            default: 'gb',
+          },
+          language: {
+            title: 'Language',
+            type: 'string',
+            default: 'en',
+          },
+        },
+        required: ['searchStringsArray'],
+      },
+    },
   ];
 
   for (const item of seedActors) {

@@ -1,27 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "services": {
-    "api": {
-      "root": "apps/api",
-      "framework": "fastify"
-    },
-    "web": {
-      "root": "apps/web",
-      "framework": "nextjs"
-    }
-  },
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": {
-        "service": "api"
-      }
-    },
-    {
-      "source": "/(.*)",
-      "destination": {
-        "service": "web"
-      }
-    }
-  ]
+  "buildCommand": "pnpm --filter @sjify/web build",
+  "outputDirectory": "apps/web/.next",
+  "framework": "nextjs"
 }

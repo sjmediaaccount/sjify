@@ -1,6 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../plugins/prisma.js';
 import { CreateActorSchema } from '@sjify/shared';
+import { scrapeGoogleMapsPlaces } from './gmaps-scraper.js';
 
 export async function actorsRoutes(server: FastifyInstance) {
   // List Actors (User / Org)
@@ -273,139 +274,20 @@ export async function actorsRoutes(server: FastifyInstance) {
       },
     });
 
-    // Check if this is google-maps-extractor
+    // Execute real Google Maps scraper or appropriate runner
+    const runStartTime = Date.now();
     let generatedItems: any[] = [];
     if (actor.slug === 'google-maps-extractor') {
-      const cities = Array.isArray(runInput.cities) && runInput.cities.length > 0 
-        ? runInput.cities 
-        : ['London', 'Manchester', 'Birmingham', 'Leeds', 'Glasgow', 'Bristol'];
-
-      // UK dental practices without website for direct marketing / outreach
-      const leadCatalog = [
-        {
-          title: "Regent Dental Care",
-          category: "Dentist",
-          address: "42 Baker Street, Marylebone, London W1U 7AJ",
-          city: "London",
-          country: "United Kingdom",
-          phone: "+44 20 7946 0912",
-          website: null,
-          rating: 4.8,
-          reviewsCount: 46,
-          placeId: "ChIJb7c_regent_lon_01",
-          googleMapsUrl: "https://maps.google.com/?cid=10827361928371",
-          openingHours: ["Monday: 09:00 - 17:30", "Tuesday: 09:00 - 17:30", "Wednesday: 09:00 - 18:00", "Thursday: 09:00 - 17:30", "Friday: 09:00 - 17:00"],
-          webSearchEnrichment: {
-            searchQuery: "Regent Dental Care Baker Street London",
-            snippet: "NHS and private general dentistry clinic established in Westminster. No registered domain or booking portal.",
-            verifiedPhone: "+44 20 7946 0912",
-            outreachOpportunity: "High: Prime Marylebone location with 46 Google reviews but zero web presence for direct patient appointments."
-          }
-        },
-        {
-          title: "Deansgate Smile Studio",
-          category: "Cosmetic Dentist",
-          address: "188 Deansgate, City Centre, Manchester M3 3WB",
-          city: "Manchester",
-          country: "United Kingdom",
-          phone: "+44 161 839 4410",
-          website: null,
-          rating: 4.9,
-          reviewsCount: 38,
-          placeId: "ChIJd8e_deansgate_man_02",
-          googleMapsUrl: "https://maps.google.com/?cid=20938471928374",
-          openingHours: ["Monday: 08:30 - 17:30", "Tuesday: 08:30 - 17:30", "Wednesday: 08:30 - 19:00", "Thursday: 08:30 - 17:30", "Friday: 08:30 - 16:30"],
-          webSearchEnrichment: {
-            searchQuery: "Deansgate Smile Studio Manchester cosmetic dentist",
-            snippet: "Specializing in composite bonding and clear aligners in central Manchester. Profile currently relies exclusively on Google Maps listing.",
-            verifiedPhone: "+44 161 839 4410",
-            outreachOpportunity: "Very High: High-ticket cosmetic services with 4.9 stars, ideal candidate for modern website + online smile consultation funnel."
-          }
-        },
-        {
-          title: "Jewellery Quarter Dental Surgery",
-          category: "Dental Clinic",
-          address: "14 Warstone Lane, Birmingham B18 6JE",
-          city: "Birmingham",
-          country: "United Kingdom",
-          phone: "+44 121 236 8820",
-          website: null,
-          rating: 4.7,
-          reviewsCount: 52,
-          placeId: "ChIJj9q_jewellery_bham_03",
-          googleMapsUrl: "https://maps.google.com/?cid=31928374659283",
-          openingHours: ["Monday: 09:00 - 17:00", "Tuesday: 09:00 - 17:00", "Wednesday: 09:00 - 17:00", "Thursday: 09:00 - 17:00", "Friday: 09:00 - 16:00"],
-          webSearchEnrichment: {
-            searchQuery: "Jewellery Quarter Dental Surgery Warstone Lane Birmingham",
-            snippet: "Family dental surgery operating in Birmingham since 2011. Phone active, no website URL registered.",
-            verifiedPhone: "+44 121 236 8820",
-            outreachOpportunity: "High: 52 positive community reviews; currently losing younger demographic without mobile appointment booking."
-          }
-        },
-        {
-          title: "Briggate Cosmetic Dentistry",
-          category: "Cosmetic Dentist",
-          address: "73 Briggate, Leeds LS1 6LH",
-          city: "Leeds",
-          country: "United Kingdom",
-          phone: "+44 113 245 9931",
-          website: null,
-          rating: 4.85,
-          reviewsCount: 41,
-          placeId: "ChIJb3g_briggate_leeds_04",
-          googleMapsUrl: "https://maps.google.com/?cid=42938475610293",
-          openingHours: ["Monday: 09:00 - 18:00", "Tuesday: 09:00 - 18:00", "Wednesday: 09:00 - 18:00", "Thursday: 09:00 - 20:00", "Friday: 09:00 - 17:00"],
-          webSearchEnrichment: {
-            searchQuery: "Briggate Cosmetic Dentistry Leeds LS1",
-            snippet: "Veneers, teeth whitening and Invisalign provider on high footfall Briggate pedestrian precinct. No website registered.",
-            verifiedPhone: "+44 113 245 9931",
-            outreachOpportunity: "Exceptional: Premium city-centre retail footfall with premium cosmetic services and no web presence."
-          }
-        },
-        {
-          title: "Buchanan Street Dental Care",
-          category: "Dentist",
-          address: "112 Buchanan Street, Glasgow G1 2JA",
-          city: "Glasgow",
-          country: "United Kingdom",
-          phone: "+44 141 221 6780",
-          website: null,
-          rating: 4.75,
-          reviewsCount: 63,
-          placeId: "ChIJb1u_buchanan_glas_05",
-          googleMapsUrl: "https://maps.google.com/?cid=53928475618294",
-          openingHours: ["Monday: 08:30 - 17:00", "Tuesday: 08:30 - 17:00", "Wednesday: 08:30 - 17:00", "Thursday: 08:30 - 19:00", "Friday: 08:30 - 16:30"],
-          webSearchEnrichment: {
-            searchQuery: "Buchanan Street Dental Care Glasgow G1",
-            snippet: "Glasgow central dental practice offering emergency appointments and preventative care. No active website.",
-            verifiedPhone: "+44 141 221 6780",
-            outreachOpportunity: "High: 63 patient reviews; emergency dental patient search demand is heavy on mobile."
-          }
-        },
-        {
-          title: "Clifton Village Dental Practice",
-          category: "Dental Clinic",
-          address: "29 The Mall, Clifton, Bristol BS8 4JG",
-          city: "Bristol",
-          country: "United Kingdom",
-          phone: "+44 117 973 1150",
-          website: null,
-          rating: 4.9,
-          reviewsCount: 35,
-          placeId: "ChIJc4l_clifton_bristol_06",
-          googleMapsUrl: "https://maps.google.com/?cid=64928374619285",
-          openingHours: ["Monday: 09:00 - 17:30", "Tuesday: 09:00 - 17:30", "Wednesday: 09:00 - 17:30", "Thursday: 09:00 - 17:30", "Friday: 09:00 - 16:00"],
-          webSearchEnrichment: {
-            searchQuery: "Clifton Village Dental Practice The Mall Bristol",
-            snippet: "Affluent Clifton suburb boutique dental clinic. Highly praised for gentle dentistry, lacks a website or online intake forms.",
-            verifiedPhone: "+44 117 973 1150",
-            outreachOpportunity: "High: Affluent clientele willing to pay private fees; massive ROI on professional brand website."
-          }
-        }
-      ];
-
-      generatedItems = leadCatalog.filter(l => cities.some((c: string) => l.city.toLowerCase() === c.toLowerCase()) || cities.length === 0);
-      if (generatedItems.length === 0) generatedItems = leadCatalog;
+      try {
+        generatedItems = await scrapeGoogleMapsPlaces(runInput);
+      } catch (err: any) {
+        request.log?.error?.(err, 'Failed to scrape Google Maps');
+        return reply.status(500).send({
+          statusCode: 500,
+          error: 'Internal Server Error',
+          message: `Google Maps scraping error: ${err.message}`,
+        });
+      }
     }
 
     // Insert items into dataset
@@ -429,6 +311,12 @@ export async function actorsRoutes(server: FastifyInstance) {
       });
     }
 
+    const durationSeconds = Math.max(1, Math.round((Date.now() - runStartTime) / 1000));
+    const filterDesc = runInput.website === 'withoutWebsite' || runInput.onlyWithoutWebsite === true
+      ? ' (without website)'
+      : '';
+    const locDesc = runInput.locationQuery || 'specified location';
+
     const run = await prisma.actorRun.create({
       data: {
         actorId: actor.id,
@@ -438,10 +326,10 @@ export async function actorsRoutes(server: FastifyInstance) {
         status: 'SUCCEEDED',
         origin: body?.origin || 'WEB',
         allocatedMemoryMbytes: actor.defaultMemoryMbytes,
-        startedAt: new Date(Date.now() - 3500),
+        startedAt: new Date(runStartTime),
         finishedAt: new Date(),
-        durationSeconds: 4,
-        statusMessage: `Scraped ${generatedItems.length} verified business places successfully without website.`,
+        durationSeconds,
+        statusMessage: `Scraped ${generatedItems.length} real Google Maps places for ${locDesc}${filterDesc}.`,
         defaultDatasetId: dataset.id,
         defaultKeyValueStoreId: kvs.id,
         resultsCount: generatedItems.length,

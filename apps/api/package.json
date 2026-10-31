@@ -25,6 +25,7 @@
     "bcryptjs": "^2.4.3",
     "dotenv": "^16.4.5",
     "fastify": "^4.27.0",
+    "puppeteer-core": "^25.16.0",
     "zod": "^3.24.2"
   },
   "devDependencies": {
